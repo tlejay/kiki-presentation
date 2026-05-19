@@ -1,0 +1,106 @@
+# Presentation Deck Checklist
+
+The single source-of-truth for "is this deck complete?" Read this **before delivering a new deck** and **before declaring an existing deck up-to-date**. Every item is a hard requirement unless explicitly marked optional.
+
+When auditing an existing deck, walk every line and tick (✓) or flag (✗ + what's missing). Then fix every flag before reporting back to Tle.
+
+---
+
+## File structure
+
+- [ ] `<slug>-deck.tsx` — the React component
+- [ ] `slide-slugs.ts` — `SLIDE_SLUGS`, `SLIDE_TITLES`, `BASE_PATH` (NOT `"use client"`)
+- [ ] `[slug]/page.tsx` — server component, calls `generateStaticParams` + `generateMetadata`, passes `initialSlide` to deck
+- [ ] `page.tsx` — server component, renders `<Deck />` with no `initialSlide` (defaults to slide 1)
+- [ ] `layout.tsx` — metadata (title template, description, OG)
+
+## Canvas + Stage (layout shell)
+
+- [ ] `BASE_W = 1920`, `BASE_H = 1080` constants — never edit
+- [ ] Deck root: `<div className="fixed inset-0 bg-white overflow-hidden">` — no frame chrome, no gray padding
+- [ ] Stage: `<div ref={stageBoxRef} className="absolute top-0 left-0 right-0 bottom-24 flex items-start justify-center">` — `bottom-24` reserves the controls strip
+- [ ] Frame (clipper): `<div className="relative overflow-hidden" style={{ width: stageW, height: stageH }}>` — pure clipper, no shadow/ring/rounded
+- [ ] Canvas: 1920×1080 div with `transformOrigin: "top left"` and `transform: scale(...)` (or rotate+scale in landscape)
+- [ ] Canvas has `data-landscape={landscapeMode ? "true" : "false"}` attribute
+- [ ] `useEffect` hooks resize observer + window resize + orientationchange listeners → recompute scale + stageW + stageH
+- [ ] Slide rail: scroll container with `snap-x snap-mandatory scroll-smooth` and hidden scrollbars
+
+## Primitives
+
+- [ ] `SlideShell` accepts `{ children, number, total, label?, bgImage?, bgAlt?, align? }`, renders fixed `1920×1080` section with `snap-start shrink-0`, padding `px-20 pt-24 pb-40`, includes `${theme.bg} ${theme.frameOutline}`
+- [ ] `Kicker` — `text-[11px] tracking-[0.3em] uppercase ${theme.kicker} font-semibold`, accepts `spacing` prop
+- [ ] `SlideNumber` — `absolute top-6 right-8`, both digits wrapped in `<span className="deck-digit-rotate">`, slash NOT counter-rotated
+- [ ] Every slide includes a `<SlideNumber current={N} total={totalSlides} />`
+
+## Theme
+
+- [ ] Theme tokens declared in one `const theme = { ... } as const` block at top of deck (or imported)
+- [ ] Tokens include: `bg`, `text`, `muted`, `subtle`, `accent`, `accentBg`, `kicker`, **`frameOutline`** (mandatory)
+- [ ] `theme.frameOutline` example: `"outline-dashed outline-1 -outline-offset-1 outline-gray-300"` — matches preset in [`themes.md`](./themes.md)
+- [ ] No hardcoded hex colors anywhere in the deck
+
+## CSS rule (in `globals.css`)
+
+- [ ] `[data-landscape="true"] .deck-digit-rotate { transform: rotate(-90deg); ... }` rule present
+
+## Deck state + behavior
+
+- [ ] `useState(initialSlide)` for `active`
+- [ ] `useState(false)` for `landscapeMode`
+- [ ] `useState(BASE_W)` and `useState(BASE_H)` for stage dimensions, `useState(1)` for stage scale
+- [ ] `scrollToSlide(index)` callback uses `BASE_W` (NOT `el.clientWidth`)
+- [ ] Scroll → setActive listener uses `Math.round(el.scrollLeft / BASE_W)`
+- [ ] `useLayoutEffect` jumps to `initialSlide * BASE_W` on mount (deep-link support)
+- [ ] `hasMountedRef` guard exists so the mount-time scroll doesn't clobber the URL
+- [ ] URL sync `useEffect` mirrors `active` slide via `window.history.replaceState` (not router)
+- [ ] Keyboard nav handles `← → Space PageUp PageDown Home End`
+
+## Controls pill (single bottom-centered overlay)
+
+- [ ] One pill only — no separate top bar, no separate floating widgets
+- [ ] Pill classes include: `absolute bottom-4 left-1/2 -translate-x-1/2 w-max max-w-[calc(100vw-1rem)] flex items-center gap-1 sm:gap-2 ... whitespace-nowrap` — **`w-max` and `whitespace-nowrap` are mandatory** (without them, the pill bg renders narrower than its content on mobile and the rightmost button visually floats outside)
+- [ ] Pill contents in order: prev arrow → counter → dot row (`hidden sm:flex`) → next arrow → divider → landscape toggle
+- [ ] Optional add-on (e.g. audio player): goes on the **left** side of the pill, separated by a divider before the prev arrow. Never as a separate floating widget.
+- [ ] Landscape toggle uses `ArrowsPointingOutIcon`, has `aria-pressed` + `aria-label` + `title` (Thai), active state uses `theme.accentBg text-white`, transform `rotate-45` when active
+- [ ] All icon-only buttons have `aria-label`
+
+## Routing
+
+- [ ] `/<slug>` (root) lands on slide 1
+- [ ] `/<slug>/<slide-slug>` deep-links to that slide
+- [ ] `generateStaticParams` returns all `SLIDE_SLUGS`
+- [ ] `generateMetadata` looks up `SLIDE_TITLES[slug]`, returns `{}` for unknown slugs (so `notFound()` triggers 404)
+- [ ] `notFound()` called when slug is unknown
+
+## Slide content rules
+
+- [ ] Default `align="top"` on every content slide — only Cover / LCD-statement / Closing use `align="center"`
+- [ ] No `md:` / `lg:` / `sm:` responsive prefixes anywhere inside slide content (only allowed: `sm:` on the controls pill)
+- [ ] No duplicate text-size classes (`text-4xl text-5xl` etc.)
+- [ ] No `text-xs` or sizes < 14px in body prose (only allowed inside intentional mockup chrome)
+- [ ] All slide content ends at canvas y ≤ 920 (`pt-24 pb-40` reserves space; safe-area audit should show 0 failures)
+- [ ] Heroicons only — `@heroicons/react/24/outline` (or `/24/solid` when needed). **Never emoji.**
+- [ ] Numbers ≥ 1,000 formatted via `Intl.NumberFormat('en-US')`
+- [ ] Every `<Image />` has `alt` (or `aria-hidden` if decorative)
+
+## Audit & verification (run before reporting back)
+
+- [ ] Type check passes (`npx tsc --noEmit`)
+- [ ] Lint passes (`pnpm lint`) — no errors in deck files
+- [ ] Production build succeeds (`pnpm build`) and prerenders all `[slug]` routes via SSG
+- [ ] Safe-area audit script (in `SKILL.md`) returns `failures: []`
+- [ ] Three grep checks from `SKILL.md` post-build audit — all clean inside slide content
+
+## Optional features (build only when Tle asks)
+
+- [ ] Live audience messages (Supabase realtime + comment QR + ticker) — see [`live-messages.md`](./live-messages.md)
+- [ ] Audio narration player — pre-generated WAVs + inline player in the controls pill (left side); auto-advance on `ended`; gate autoplay behind first user click
+
+## Things that should NOT be in the deck
+
+- [ ] No `useSearchParams` / no `?slide=N` param handling — use deep-link slugs instead
+- [ ] No `cleanMode` / no embed mode — single canonical view only
+- [ ] No `w-screen` / `h-screen` on slides — only the deck root uses viewport units (via `fixed inset-0`)
+- [ ] No `Suspense` around the deck unless the deck itself uses a hook that needs it
+- [ ] No top-bar header — the controls pill is the only deck chrome
+- [ ] No second floating widget (audio player, progress dots, etc.) — everything lives inside the single pill
