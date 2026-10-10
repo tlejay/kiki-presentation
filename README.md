@@ -13,7 +13,7 @@ When invoked, the skill:
    - Who is the audience?
    - Which visual theme to apply (10 presets or generate on-the-fly)?
    - What content angle? (pitch, retrospective, walkthrough, etc.)
-3. **Generates a 15-slide React deck** following the template structure in `slide-templates.md`.
+3. **Generates a React deck** following the chosen template gallery — `slide-templates-v1.md` (MakeByTle style), `slide-templates-v2.md` (Kevents brand) or `slide-templates-v3.md` (The Standard, photo-led), picked in SKILL.md Step 3a.
 4. **Writes the deck into the MakeByTle.com Next.js app** at the right route.
 5. **Verifies locally** by running the dev server and listing the new route.
 
@@ -31,10 +31,14 @@ The skill works from inside any project directory — it auto-detects the projec
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Main skill entry point and workflow |
-| `slide-templates.md` | The 15-slide React template structure |
-| `themes.md` | 10 visual theme presets + custom theme synthesis |
+| `slide-templates-v1.md` | React template gallery — v1, MakeByTle style (clean, single background) |
+| `slide-templates-v2.md` | React template gallery — v2, Kevents brand (gradient, glass, 3-tier backgrounds + signature motif) |
+| `slide-templates-v3.md` | React template gallery — v3, The Standard (full-bleed photo + scrim, white type, brand chrome, phone/thumbnail/cut-out media) |
+| `scripts/cutout.swift` | Lifts the main subject out of a photo into a transparent PNG (Apple Vision, macOS 14+) — for v3 cut-out slides |
+| `themes.md` | Visual theme presets (incl. Kevents for v2, The Standard for v3) + custom theme synthesis |
 | `typography.md` | Type-pairing rules and Tailwind tokens |
 | `checklist.md` | Pre-deploy quality checklist |
+| `toc.md` | Table-of-Contents add-on (Agenda slide + floating menu + jump overlay) — always offered via AskUserQuestion |
 | `live-messages.md` | Status messages the skill prints during execution |
 | `bni-structure.md` | Alternate 5-minute BNI presentation structure |
 | `examples.md` | Sample slugs and parameter examples |

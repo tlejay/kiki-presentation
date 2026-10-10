@@ -1,4 +1,6 @@
-# Slide Templates
+# Slide Templates — v1 (MakeByTle style)
+
+> **This is v1** — the clean, single-background MakeByTle gallery (amber / any of the four classic presets). For the **Kevents-branded** gallery with the 3-tier background system (cover / content / divider), signature motif, glass cards, and workshop/activity + section-divider archetypes, see [`slide-templates-v2.md`](./slide-templates-v2.md). Pick the version in SKILL.md **Step 3a**.
 
 Source of truth for every slide pattern. Read this when building a deck. **Do not modify when building** — only Tle upgrades this file, and upgrades only affect future decks.
 
@@ -37,6 +39,11 @@ const [landscapeMode, setLandscapeMode] = useState(false);
 const [stageScale, setStageScale] = useState(1);
 const [stageW, setStageW] = useState(BASE_W);
 const [stageH, setStageH] = useState(BASE_H);
+const [zoom, setZoom] = useState(1); // presenter canvas zoom, multiplied on top of auto-fit
+
+const zoomIn = useCallback(() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2))), []);
+const zoomOut = useCallback(() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2))), []);
+const resetZoom = useCallback(() => setZoom(1), []);
 
 useEffect(() => {
   const update = () => {
@@ -44,7 +51,8 @@ useEffect(() => {
     if (!box) return;
     const wantedW = landscapeMode ? BASE_H : BASE_W;
     const wantedH = landscapeMode ? BASE_W : BASE_H;
-    const scale = Math.min(box.width / wantedW, box.height / wantedH);
+    // auto-fit to the visible stage, then apply the presenter's zoom on top
+    const scale = Math.min(box.width / wantedW, box.height / wantedH) * zoom;
     setStageScale(scale);
     setStageW(wantedW * scale);
     setStageH(wantedH * scale);
@@ -59,7 +67,7 @@ useEffect(() => {
     window.removeEventListener("resize", update);
     window.removeEventListener("orientationchange", update);
   };
-}, [landscapeMode]);
+}, [landscapeMode, zoom]); // zoom in deps so the stage re-fits when it changes
 
 // Markup:
 <div className="fixed inset-0 bg-white overflow-hidden">
@@ -71,33 +79,40 @@ useEffect(() => {
       Top-aligned (items-start) so when the stage is taller than 16:9
       (mobile portrait, windowed desktop) the empty room sits at the bottom
       of the stage. */}
-  <div ref={stageBoxRef} className="absolute top-0 left-0 right-0 bottom-24 flex items-start justify-center">
-    {/* Frame — pure clipper, NO chrome (no shadow/ring/rounded/border).
-        Slide content provides its own bg per-slide. */}
-    <div
-      className="relative overflow-hidden"
-      style={{ width: stageW, height: stageH }}
-    >
+  {/* Stage scroll area: `overflow-auto` so a zoomed-in canvas can be panned. */}
+  <div ref={stageBoxRef} className="absolute top-0 left-0 right-0 bottom-24 overflow-auto">
+    {/* Centering wrapper: `min-w/h-full` keeps the frame centered when it fits
+        (zoom ≤ fit), and lets it overflow + scroll (pan) when the presenter
+        zooms beyond the viewport. Keeps `items-start` so at zoom=1 the slide
+        stays top-aligned exactly like before. */}
+    <div className="min-w-full min-h-full flex items-start justify-center">
+      {/* Frame — pure clipper, NO chrome (no shadow/ring/rounded/border).
+          Slide content provides its own bg per-slide. */}
       <div
-        // `data-landscape` is read by descendants (e.g. SlideNumber digits)
-        // that want to counter-rotate so they stay upright in rotated mode.
-        data-landscape={landscapeMode ? "true" : "false"}
-        className="absolute top-0 left-0"
-        style={{
-          width: BASE_W,
-          height: BASE_H,
-          transformOrigin: "top left",
-          transform: landscapeMode
-            ? `translate(${stageW}px, 0) rotate(90deg) scale(${stageScale})`
-            : `scale(${stageScale})`,
-        }}
+        className="relative overflow-hidden shrink-0"
+        style={{ width: stageW, height: stageH }}
       >
         <div
-          ref={containerRef}
-          style={{ width: BASE_W, height: BASE_H }}
-          className="overflow-x-auto overflow-y-hidden snap-x snap-mandatory scroll-smooth flex [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          // `data-landscape` is read by descendants (e.g. SlideNumber digits)
+          // that want to counter-rotate so they stay upright in rotated mode.
+          data-landscape={landscapeMode ? "true" : "false"}
+          className="absolute top-0 left-0"
+          style={{
+            width: BASE_W,
+            height: BASE_H,
+            transformOrigin: "top left",
+            transform: landscapeMode
+              ? `translate(${stageW}px, 0) rotate(90deg) scale(${stageScale})`
+              : `scale(${stageScale})`,
+          }}
         >
-          {/* slides */}
+          <div
+            ref={containerRef}
+            style={{ width: BASE_W, height: BASE_H }}
+            className="overflow-x-auto overflow-y-hidden snap-x snap-mandatory scroll-smooth flex [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {/* slides */}
+          </div>
         </div>
       </div>
     </div>
@@ -120,6 +135,7 @@ useEffect(() => {
 > - `SlideShell` keeps `pt-24 pb-40` for internal breathing room. Now that canvas can't reach the pill, the pb-40 is a comfort margin, not a safety reservation.
 > - **Why a reserved strip** instead of pure overlay: in the rotated landscape mode, the canvas is taller-than-wide (rotated 90°). With a pure overlay the pill always covered the bottom of the rotated canvas; reserving a strip cleanly separates them.
 > - The earlier "frame with shadow + gray bg + bottom controls bar" layout made fonts feel small because the canvas was rendered at ~75% of the viewport, then 1920px got scaled inside that smaller box (double shrink). Don't reintroduce frame chrome.
+> - **Presenter zoom** (`zoom` state): a multiplier applied *on top of* the auto-fit so the presenter can enlarge the dashed-frame canvas when it reads too small on a projector/small screen — or shrink it. At `zoom=1` everything behaves exactly as before. When `zoom > 1` the canvas overflows the stage and the `overflow-auto` stage area lets the presenter scroll/pan to the part they want; the centering wrapper keeps it centered when it still fits. Controlled from the pill (− / % / +) and keys (`+` / `-` / `0`-to-reset). The slide-rail nav (`containerRef.scrollTo` in canvas coords) is unaffected by zoom.
 
 > **NO responsive prefixes inside slides.** The canvas root is non-responsive too now (only `bg-white`, `absolute inset-0`) — the only "responsive" piece is `hidden sm:flex` on the dot row inside the controls pill, where dots collapse on narrow phones.
 
@@ -152,7 +168,7 @@ useEffect(() => {
 
 ### Controls pill (lives in the reserved bottom strip)
 
-A single compact pill at viewport `bottom-4`, centered. Combines: prev arrow · counter · dot row (sm+ only) · next arrow · divider · landscape toggle (icon-only). The pill lives **outside** the rotated canvas transform, so its labels stay upright regardless of orientation.
+A single compact pill at viewport `bottom-4`, centered. Combines: prev arrow · counter · dot row (sm+ only) · next arrow · divider · zoom group (− / % / +, sm+ only) · divider · landscape toggle (icon-only). The pill lives **outside** the rotated canvas transform, so its labels stay upright regardless of orientation.
 
 The pill sits inside the 96px stage-bottom reservation set by the stage area (`bottom-24`), so it never overlaps slide content in any orientation.
 
@@ -194,6 +210,28 @@ The pill sits inside the 96px stage-bottom reservation set by the stage area (`b
 
   <span className="w-px h-5 sm:h-6 bg-gray-200 mx-0.5 sm:mx-1" aria-hidden="true" />
 
+  {/* Zoom group — presenter resizes the dashed-frame canvas (hidden on narrow phones).
+      `zoomIn`/`zoomOut`/`resetZoom` from the canvas-root block above. */}
+  <div className="hidden sm:flex items-center gap-0.5">
+    <button type="button" onClick={zoomOut} disabled={zoom <= 0.5}
+      aria-label="ย่อขนาด Canvas" title="ย่อ (กด −)"
+      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center shrink-0">
+      <MagnifyingGlassMinusIcon className="w-4 h-4" aria-hidden="true" />
+    </button>
+    <button type="button" onClick={resetZoom}
+      aria-label="รีเซ็ตขนาด Canvas" title="รีเซ็ตพอดีจอ (กด 0)"
+      className={`text-xs font-mono ${theme.muted} tabular-nums shrink-0 w-12 text-center hover:${theme.accent} transition-colors`}>
+      {Math.round(zoom * 100)}%
+    </button>
+    <button type="button" onClick={zoomIn} disabled={zoom >= 2}
+      aria-label="ขยายขนาด Canvas" title="ขยาย (กด +)"
+      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center shrink-0">
+      <MagnifyingGlassPlusIcon className="w-4 h-4" aria-hidden="true" />
+    </button>
+  </div>
+
+  <span className="hidden sm:block w-px h-5 sm:h-6 bg-gray-200 mx-0.5 sm:mx-1" aria-hidden="true" />
+
   <button type="button" onClick={() => setLandscapeMode((v) => !v)}
     aria-pressed={landscapeMode}
     aria-label={landscapeMode ? "กลับแนวตั้ง" : "หมุนเป็นแนวนอน"}
@@ -206,9 +244,47 @@ The pill sits inside the 96px stage-bottom reservation set by the stage area (`b
 </div>
 ```
 
+> **Zoom group is `hidden sm:flex`** — it's a presentation aid for big screens/projectors, so it collapses on narrow phones to keep the pill within `max-w-[calc(100vw-1rem)]` (same rationale as the dot row). Needs `MagnifyingGlassMinusIcon` + `MagnifyingGlassPlusIcon` from `@heroicons/react/24/outline`.
+
 Why one pill: every pixel of viewport height matters because the canvas scales-to-fit. A single ~52px-tall pill leaves more room for slide content than two stacked rows (~120px tall). On mobile portrait the pill is even shorter (~44px) thanks to the responsive padding shrink. The landscape toggle is icon-only with `aria-label` and `title` for the verbose Thai label on hover.
 
 > **`w-max whitespace-nowrap` is mandatory on the pill** — without them, the pill's bg-white box can render narrower than its content on certain viewports, leaving the rightmost button (landscape toggle) visually floating outside the pill. `max-w-[calc(100vw-1rem)]` caps the pill so it never bleeds past the viewport edge on phones; if your pill content is wider than that cap, hide non-essential elements at narrow breakpoints (e.g. wrap the dot row in `hidden sm:flex`) — never let the pill grow wider than the viewport.
+
+### Section progress markers on the dot row (optional add-on)
+
+For a long deck split into named sections (Day 1 / Day 2, Part 1 / Part 2, Week 6 / Week 8…), the presenter often wants a *glanceable* sense of "how far in am I / how close to the end" without reading the counter. Add markers to the existing dot row — it's deck **chrome** (no slide-content change, so editing it needs **no PDF regen**).
+
+Two cheap, composable touches inside the `{Array.from({length: totalSlides}).map(...)}` dot loop:
+1. **Tint a section's dots** — give the later section's inactive dots the accent at low opacity instead of gray, so the final block reads as a distinct cluster.
+2. **Insert a labelled tick before a section boundary** — a thin vertical divider + a tiny label (e.g. `W8`, `วันที่ 2`) right before the first dot of that section.
+
+```tsx
+{Array.from({ length: totalSlides }).map((_, i) => {
+  const isLater = i >= SECTION2_INDEX;            // 0-based index of section-2's first slide
+  const dot = (
+    <button key={i} type="button" onClick={() => scrollToSlide(i)}
+      aria-label={`Go to slide ${i + 1}`} aria-current={active === i ? "true" : undefined}
+      className={`h-1.5 rounded-full transition-all ${
+        active === i ? `w-5 ${theme.accentBg}`
+        : isLater ? "w-1.5 bg-[--accent]/35 hover:bg-[--accent]/60"  // tint section 2
+        : "w-1.5 bg-slate-300 hover:bg-slate-400"
+      }`}
+    />
+  );
+  if (i === SECTION2_INDEX) {                       // labelled tick before the boundary
+    return (
+      <span key="sec2-marker" className="flex items-center gap-1" title="Section 2 · home stretch">
+        <span className="w-px h-3.5 bg-[--accent]/60" aria-hidden="true" />
+        <span className="text-[9px] font-bold tracking-wide text-[--accent] mr-0.5">W8</span>
+        {dot}
+      </span>
+    );
+  }
+  return dot;
+})}
+```
+
+> The `text-[9px]` label is allowed here — the dot row is chrome (like the counter), not slide content, so it's exempt from the 5-size typography scale. Use theme tokens for the accent; keep the tick subtle (a notch, not a wall).
 
 ---
 
@@ -339,11 +415,21 @@ useEffect(() => {
     else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); scrollToSlide(active - 1); }
     else if (e.key === "Home") scrollToSlide(0);
     else if (e.key === "End") scrollToSlide(totalSlides - 1);
+    // Presenter zoom. Tab/Enter are also wired because presentation clickers
+    // commonly send them (alongside ←/→); preventDefault stops Tab from moving
+    // focus and Enter from activating a focused control.
+    else if (e.key === "+" || e.key === "=" || e.key === "Tab") { e.preventDefault(); zoomIn(); }
+    else if (e.key === "-" || e.key === "_" || e.key === "Enter") { e.preventDefault(); zoomOut(); }
+    else if (e.key === "0") resetZoom();
   };
   window.addEventListener("keydown", onKey);
   return () => window.removeEventListener("keydown", onKey);
-}, [active, scrollToSlide, totalSlides]);
+}, [active, scrollToSlide, totalSlides, zoomIn, zoomOut, resetZoom]);
 ```
+
+> **Presentation-clicker keys.** Many clickers send `←`/`→` for slides plus `Tab`/`Enter` as their two extra buttons. Mapping `Tab → zoom in` and `Enter → zoom out` lets the presenter resize the canvas from the clicker. **`preventDefault` is required** on Tab (else focus jumps between buttons) and Enter (else it re-triggers a focused control). Update the two zoom buttons' `title` to advertise it (e.g. `"ขยาย (กด + หรือ Tab)"`, `"ย่อ (กด − หรือ Enter)"`).
+
+> If the deck also has a TOC overlay (see [`toc.md`](./toc.md)), the keyboard handler additionally guards `if (tocOpen) return;` after the `Escape` check so zoom/nav keys (incl. Tab/Enter) don't fire while the menu is open — letting Tab/Enter navigate the menu normally.
 
 ---
 
@@ -720,6 +806,150 @@ After composing a slide, eyeball it: does the content occupy ≥ ~75% of the can
 
 ---
 
+## Illustrative mockups (REQUIRED for teaching tool/feature slides)
+
+When a slide teaches "what tool/feature X looks like and does", **show a mockup of its UI** — a clean, on-brand HTML stand-in built from `div`s — instead of describing the screen in words. Learners need to *see* it. This is mandatory for teaching/workshop decks (see SKILL.md → "Teaching / Workshop decks"). Reference implementation: `aviationx-deck.tsx` (`Window`, `MockFrame`, `*Mock` components, `GeminiFeatureSlide`).
+
+Mockups are **illustrative, not real screenshots** — always tag them `ภาพประกอบ` so nobody mistakes them for the real product, and so Tle can swap in a real capture later.
+
+### `MockFrame` — app-window wrapper with "ภาพประกอบ" badge
+
+```tsx
+function MockFrame({ children, app = "App" }: { children: React.ReactNode; app?: string }) {
+  return (
+    <div className="relative h-full min-h-[420px] rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_-20px_rgba(0,0,0,0.25)] overflow-hidden flex flex-col">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50 shrink-0">
+        <span className="w-3 h-3 rounded-full bg-slate-300" />
+        <span className="w-3 h-3 rounded-full bg-slate-300" />
+        <span className="w-3 h-3 rounded-full bg-slate-300" />
+        <span className={`ml-3 text-sm font-semibold ${theme.accent} flex items-center gap-1.5`}>{app}</span>
+        <span className="ml-auto text-[10px] tracking-[0.15em] uppercase font-semibold text-slate-400 border border-slate-200 rounded-full px-2.5 py-0.5">
+          ภาพประกอบ
+        </span>
+      </div>
+      <div className="flex-1 p-5 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+```
+
+> **Mockup sizing is chrome, not content** — inside a `MockFrame`/`Window`, `text-sm`/`text-[13px]`/`text-[15px]` etc. ARE allowed (you're mimicking real app chrome). This is the one place the 5-size typography rule relaxes. Keep slide *content* (headings, leads, cards) on the normal scale.
+
+Build the inner mock from simple primitives that *suggest* the real UI — chat bubbles, sidebar + channel list, a calendar grid, a kanban with To-do/In-Progress/Done columns, a data table, bar/line chart bars (`<span>` with `height`), skeleton text rows (`<div className="h-2 rounded bg-slate-100 w-..." />`). A few representative rows beat a pixel-perfect clone.
+
+### Phone / device mockup — LOCK width AND height (never let content drive it)
+
+When the mockup is a **device** (phone, tablet, watch) rather than a desktop app window, you MUST give the device frame an **explicit `w-[…px] h-[…px]`** so it keeps a real device aspect ratio. The single most common mistake: setting only the width and letting the inner content (chat bubbles, list rows) determine the height — the frame then renders almost **square**, which reads as broken. A phone that isn't visibly taller-than-wide looks wrong to everyone.
+
+**The rule:**
+- **Phone** → lock to roughly **1 : 2.05–2.16** (modern 9:19.5–9:20). Canonical: `w-[300px] h-[620px]`. Other safe sizes: `w-[280px] h-[580px]`, `w-[330px] h-[680px]`.
+- **Tablet** → `aspect-[3/4]` (portrait) or `aspect-[4/3]` (landscape) with a locked width.
+- The inner screen is `flex flex-col`; the **scrolling content area gets `flex-1 overflow-hidden`** so it fills leftover height instead of stretching the device.
+- Mark **every** fixed region (`status bar`, `photographed item`, `input bar`) with `shrink-0`. Only the conversation/list area flexes.
+- **Budget check**: a `620px` phone plus a slide heading must fit the **920-canvas-px** content budget (`SlideShell` reserves the rest). If the slide also has a tall heading, drop the heading to `text-5xl` or shrink the phone to `h-[580px]` — don't let the device overflow into the controls-pill safe area. Always run the Step-6 safe-area audit after adding one.
+
+Canonical phone (the locked pattern — copy this shape, swap the inner mock):
+
+```tsx
+function PhoneMock({ question, bubbles }: { question: string; bubbles: { who: "ai" | "user"; text: string }[] }) {
+  return (
+    // LOCKED 300×620 (ratio ~1:2.07). Content NEVER drives the height.
+    <div className="relative mx-auto w-[300px] h-[620px] rounded-[2.6rem] bg-slate-900 p-2.5 shadow-2xl">
+      <div className="w-full h-full rounded-[2.1rem] bg-white overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-5 pt-3 pb-1.5 text-xs font-mono text-slate-400 shrink-0">
+          <span>9:41</span>
+          <span className={`flex items-center gap-1 ${theme.accent} font-semibold`}>App</span>
+        </div>
+        <div className={`mx-3 mt-1.5 rounded-xl border-2 border-dashed ${theme.accentSoft} px-3.5 py-3 shrink-0`}>
+          <p className="text-sm text-slate-700 leading-snug">{question}</p>
+        </div>
+        {/* conversation — the ONLY part that flexes */}
+        <div className="flex-1 px-3 py-3 space-y-2.5 bg-slate-50/60 overflow-hidden">
+          {bubbles.map((b, i) => (
+            <p key={i} className={`max-w-[200px] rounded-2xl px-3 py-2 text-sm leading-snug ${b.who === "user" ? `ml-auto ${theme.accentBg}` : "bg-white border border-slate-200 text-slate-800"}`}>{b.text}</p>
+          ))}
+        </div>
+        <div className="px-3 pb-4 pt-1 shrink-0">
+          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2">
+            <span className="text-sm text-slate-400 flex-1">พิมพ์ข้อความ…</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+> Same principle for a **paper / worksheet** mockup (e.g. a sheet of problems for the audience to photograph): lock the sheet with a real proportion and a header strip, keep text large enough to read from the back of a room (`text-3xl`+), and lay items on a grid so the sheet doesn't grow lopsided. Reference: `dreamlab-deck.tsx` (`PhoneMock` + the Worksheet slide).
+
+### T13 · `tool-feature` — teach one tool/feature (explanation + mockup)
+
+**When to use**: The core teaching slide. One capability of a tool, with a "what / how" explanation beside an illustrative mockup. Use one per capability.
+
+**Data**: `kicker, name, tag?, what, how: string[], Icon, mock: ReactNode`
+
+```tsx
+<SlideShell number={N} total={totalSlides} label={name}>
+  <SlideNumber current={N} total={totalSlides} />
+  <div className="flex items-center gap-3 mb-3">
+    <Kicker spacing="mb-0">{kicker}</Kicker>
+    {tag && <span className={`text-[11px] tracking-[0.15em] uppercase font-semibold text-white ${theme.accentBg} rounded-full px-3 py-1`}>{tag}</span>}
+  </div>
+  <h2 className={`text-5xl font-bold ${theme.text} leading-tight`}>{name}</h2>
+  <div className="mt-7 grid grid-cols-12 gap-8 items-stretch">
+    <div className="col-span-6 flex flex-col gap-5">
+      <div className={`rounded-2xl ${theme.accentSoft} p-7`}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-12 h-12 rounded-2xl ${theme.accentBg} flex items-center justify-center`}><Icon className="w-6 h-6" aria-hidden /></div>
+          <p className={`text-2xl font-bold ${theme.accent}`}>คืออะไร</p>
+        </div>
+        <p className={`text-2xl ${theme.subtle} leading-relaxed`}>{what}</p>
+      </div>
+      <div className={`rounded-2xl border ${theme.border} p-7`}>
+        <p className={`text-[11px] tracking-[0.3em] uppercase ${theme.kicker} font-semibold mb-4`}>ทำงานยังไง</p>
+        <ul className="space-y-3">
+          {how.map((h) => (
+            <li key={h} className={`flex gap-3 items-start text-2xl ${theme.subtle}`}>
+              <CheckCircleIcon className={`w-7 h-7 ${theme.accent} shrink-0 mt-0.5`} aria-hidden />
+              <span className="leading-snug">{h}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+    <div className="col-span-6"><MockFrame app={name}>{mock}</MockFrame></div>
+  </div>
+</SlideShell>
+```
+
+### T14 · `tool-landscape` — survey the category before the chosen tool
+
+**When to use**: Right before you introduce the tool you'll teach. Show the other options in the category and why you picked this one — give learners the whole map before the single pin (Start-With-Why build-up).
+
+**Data**: `kicker, heading, options: { name, note, chosen? }[], whyChosen`
+
+```tsx
+<SlideShell number={N} total={totalSlides} label="Landscape">
+  <SlideNumber current={N} total={totalSlides} />
+  <Kicker>{kicker}</Kicker>
+  <h2 className={`text-5xl font-bold ${theme.text} leading-tight`}>{heading}</h2>
+  <div className={`mt-10 grid grid-cols-${Math.min(options.length, 4)} gap-5`}>
+    {options.map((o) => (
+      <div key={o.name} className={`p-7 rounded-2xl border ${o.chosen ? theme.accentSoft + " ring-2 ring-[--accent]" : "border-slate-200 bg-white"} flex flex-col`}>
+        <p className={`text-2xl font-bold ${o.chosen ? theme.accent : theme.text}`}>{o.name}</p>
+        <p className={`mt-2 text-2xl ${theme.subtle} leading-snug`}>{o.note}</p>
+        {o.chosen && <span className={`mt-4 inline-block w-fit text-[11px] tracking-[0.15em] uppercase font-semibold text-white ${theme.accentBg} rounded-full px-3 py-1`}>เราจะใช้ตัวนี้</span>}
+      </div>
+    ))}
+  </div>
+  <div className={`mt-8 rounded-2xl ${theme.accentSoft} p-7`}>
+    <p className={`text-2xl ${theme.text} leading-relaxed`}><span className="font-bold">ทำไมเลือกตัวนี้:</span> {whyChosen}</p>
+  </div>
+</SlideShell>
+```
+
+---
+
 ## Cheat sheet — pick a template
 
 | Situation | Template |
@@ -735,6 +965,9 @@ After composing a slide, eyeball it: does the content occupy ≥ ~75% of the can
 | Trigger words → action | T09 trigger-list |
 | Literal script for someone to repeat | T10 script-box |
 | Misconceptions / before-after | T11 comparison |
+| Teach one tool/feature (with mockup) | T13 tool-feature |
+| Survey tools in a category before teaching one | T14 tool-landscape |
+| Picture + short text (default for client decks) | T15 illustrated-split — see [`illustrated-decks.md`](./illustrated-decks.md) |
 | Last slide | T12 closing |
 
 ## Adding / upgrading a template

@@ -57,7 +57,7 @@ Cut from #2-4, #6-10, #14 first if you must.
 
 The fully working reference deck is `bni-5min` for Tle (เติ้ล AI):
 
-- **Path**: `00 Made by Tle/madebytle/src/app/presentation/bni-5min/bni-5min-deck.tsx`
+- **Path**: `00 Madebytle Profile/madebytle/src/app/presentation/bni-5min/bni-5min-deck.tsx`
 - **URL**: `https://madebytle.com/presentation/bni-5min`
 
 When in doubt about styling or layout, open this file. It is the canonical example of every template applied with the MakeByTle theme.
