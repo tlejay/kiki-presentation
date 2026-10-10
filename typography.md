@@ -41,14 +41,6 @@ H2 and Normal are the same px (24px) — the difference is role/style:
 
 Pick weight/color by role; the size is locked.
 
-## What this replaces
-
-Before this rule, decks used a 10-step scale (`text-9xl` for hero, `text-7xl` for h2, `text-base` for captions, `text-sm` for fine print, etc.). **Don't.** The 10-step scale produced inconsistent slides and tempted authors to make body text small to "fit". The 5-size system is intentionally minimalist:
-
-- Want emphasis? Use **font weight + color**, not size.
-- Long content? Tighten copy or add another slide. Don't shrink the text.
-- "Wow" moment? Reach for **Large** (text-8xl) — but only on hero slides where the line itself is the message (Cover brand name, LCD one-liner, Closing sign-off). Otherwise stay in the H1/H2/Normal lane.
-
 ## Forbidden in content
 
 - `text-base`, `text-sm`, `text-xs`, `text-[Xpx]` for any reading prose, bullets, list items, captions, footers, taglines.
@@ -113,16 +105,3 @@ grep -nE '(md|lg|sm):text-' "$DECK"
 ```
 
 For (1), the only allowed matches should be inside known mockup blocks (phone UIs, dashboard widgets) and the SlideNumber/controls chrome. Everything else is a violation.
-
-## Vertical space budget (use the whole canvas)
-
-`SlideShell` uses `flex items-center justify-center` so content is vertically centered. If your slide content is much shorter than the canvas content area (`1080 - pt-16 - pb-32 = 888px`), the slide will look top-heavy or empty.
-
-**Audit each slide for vertical fill:** sum the heights you've allocated. A typical slide should fill ≥ ~750px of the 888px content area. If you're way under, one of these knobs:
-
-- **Bump fixed-height media** (collage, photo, chart). E.g., a `h-[260px]` photo grid in a slide with only 5 phase cards above it leaves ~240px of empty canvas — bump to `h-[480px]` and increase card padding to match.
-- **Switch to `aspect-[X/Y]` sizing for hero images** so they grow with their column width instead of getting fixed at a small px value.
-- **Increase gaps and card padding** (`gap-2` → `gap-3`, `p-3` → `p-7`).
-- **Add more content** — add a 4th item to a 3-card grid, expand a bullet list.
-
-Don't artificially stretch by adding empty divs or oversize whitespace — make the actual content (image, padding) take the room. **Don't** try to fix sparse slides by increasing font size beyond the 4-size scale.

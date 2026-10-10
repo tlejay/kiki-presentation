@@ -1,6 +1,6 @@
 # Slide Templates — v3 (The Standard · photo-led)
 
-> **This is v3** — the full-bleed-photograph gallery: every slide sits on a real photo darkened by a scrim, with white type, one accent colour, pinned brand chrome and real media (phones, thumbnails, cut-out people) in the middle layer. For the clean white gallery see [`slide-templates-v1.md`](./slide-templates-v1.md); for the Kevents gradient gallery see [`slide-templates-v2.md`](./slide-templates-v2.md). Pick the version in SKILL.md **Step 3a**; pair v3 with the **The Standard** theme preset in [`themes.md`](./themes.md) (Preset 8).
+> **This is v3** — the full-bleed-photograph gallery: every slide sits on a real photo darkened by a scrim, with white type, one accent colour, pinned brand chrome and real media (phones, thumbnails, cut-out people) in the middle layer. For the clean white gallery see [`slide-templates-v1.md`](./slide-templates-v1.md); for the Kevents gradient gallery see [`slide-templates-v2.md`](./slide-templates-v2.md). Pick the version in SKILL.md **Step 2**; pair v3 with the **The Standard** theme preset in [`themes.md`](./themes.md) (Preset 8).
 
 > **Working reference (read before building):** `madebytle/src/app/presentation/cinematic-demo/cinematic-demo-deck.tsx` — all ten templates below, rendered and audited. Dev URL `/presentation/cinematic-demo`. Adapt it, don't re-derive.
 
@@ -80,12 +80,12 @@ No usable portrait? Use C07 or C09 instead — do not fake a cut-out with a rect
 
 ## Canvas mode (how decks actually render)
 
-**Identical to v1** — fixed 1920×1080 canvas, CSS-scaled, optional 90° rotation, no responsive prefixes inside slides. Copy these blocks verbatim from [`slide-templates-v1.md`](./slide-templates-v1.md): **Canvas root**, **Scrolling math**, **Controls pill**, **Keyboard nav**, **Landscape digit rotation**, and (optional) **Section progress markers**.
+Chrome comes from the shared `DeckShell` (`madebytle/src/app/presentation/_shared/deck-shell.tsx`) — import it, never paste canvas / pill / keyboard code. Props and locked numbers: [`canvas-shell.md`](./canvas-shell.md). `DeckShell`'s defaults (`rootBg: bg-neutral-950`, literal `text-gray-900` / `text-gray-500` / `bg-red-500` on the pill) already match v3, so no `chrome` prop is needed.
 
 Three v3 differences:
 
-1. **Deck root and layout wrapper are dark**: `fixed inset-0 bg-neutral-950 overflow-hidden` on the root, `bg-neutral-950 min-h-screen` in `layout.tsx`. A white root shows as a white bar under the canvas.
-2. **Controls pill stays white** (it sits in the reserved strip, outside the canvas). Add `text-gray-900` to the pill and use literal `text-gray-500` / `bg-red-500` for its counter and active dot — The Standard theme's `muted` is white and would vanish on the pill.
+1. **Deck root and layout wrapper are dark**: `DeckShell`'s default `rootBg` is `bg-neutral-950`; `layout.tsx` wrapper must be `bg-neutral-950 min-h-screen`. A white root shows as a white bar under the canvas.
+2. **Controls pill stays white** (it sits in the reserved strip, outside the canvas). `DeckShell` uses literal `text-gray-900` / `text-gray-500` / `bg-red-500` for the pill, counter and active dot — The Standard theme's `muted` is white and would vanish on the pill, so never pass theme tokens into `chrome`.
 3. **Content padding is `pt-28`** (112) instead of `pt-24`, to clear the brand chrome. Content area: x 80→1840, y 112→920.
 
 ---
@@ -856,7 +856,7 @@ Vary the detail template between neighbouring programmes — C04 then C07 then C
 
 ## Audit
 
-The standard safe-area audit (SKILL.md Step 6) flags full-bleed layers. For v3 add one line at the top of its per-element callback:
+The standard safe-area audit (SKILL.md Step 5) flags full-bleed layers. For v3 add one line at the top of its per-element callback:
 
 ```js
 if (el.closest('[data-bleed]') || el.hasAttribute('data-fill')) return;

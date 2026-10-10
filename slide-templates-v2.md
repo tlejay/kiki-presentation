@@ -1,6 +1,6 @@
 # Slide Templates — v2 (Kevents brand)
 
-> **This is v2** — the Kevents-branded gallery: indigo→purple→pink signature gradient, glass cards, a **3-tier background system** (cover / content / divider), a bleed-off-edge **signature motif**, and workshop/activity + section-divider archetypes. For the clean single-background MakeByTle gallery, see [`slide-templates-v1.md`](./slide-templates-v1.md). Pick the version in SKILL.md **Step 3a**; pair v2 with the **Kevents** theme preset in [`themes.md`](./themes.md).
+> **This is v2** — the Kevents-branded gallery: indigo→purple→pink signature gradient, glass cards, a **3-tier background system** (cover / content / divider), a bleed-off-edge **signature motif**, and workshop/activity + section-divider archetypes. For the clean single-background MakeByTle gallery, see [`slide-templates-v1.md`](./slide-templates-v1.md). Pick the version in SKILL.md **Step 2**; pair v2 with the **Kevents** theme preset in [`themes.md`](./themes.md).
 
 Source of truth for every v2 slide pattern. Read this when building a v2 deck. **Do not modify when building** — only Tle upgrades this file, and upgrades only affect future decks.
 
@@ -19,144 +19,13 @@ All examples assume the **Kevents** `theme` token object from [`themes.md`](./th
 3. New primitives: `<CalloutBar>`, `<PillBadge>`, `<NumberBadge>`, plus gradient-title + underline-accent conventions.
 4. Gallery K12–K24 adds section-divider, question, agenda, compare, process-flow, numbered-cards, 2×2 grid, quadrant matrix, chat bubbles, **activity/workshop**, criteria-columns, photo-strip, checklist-recap.
 
-Everything else (Canvas mode, scrolling math, controls pill, keyboard nav, SlideNumber, Kicker, landscape rotation, MockFrame/phone) is **identical to v1** and reproduced below so v2 is self-contained.
+Deck chrome (stage, scrolling, controls pill, keyboard nav, landscape rotation) comes from the shared `DeckShell` — see [`canvas-shell.md`](./canvas-shell.md). `SlideNumber`, `Kicker` and MockFrame/phone are identical to v1 and reproduced below so v2 is self-contained.
 
 ---
 
-## Canvas mode (how decks actually render)
+## Canvas mode
 
-Decks render at a **fixed 1920×1080 canvas** that is CSS-scaled (optionally rotated 90° for portrait phones) to fit the viewer's viewport. `SlideShell` handles this — slide content always lays out as if the screen is exactly 1920×1080.
-
-Three rules that follow:
-
-1. **No responsive prefixes** in slide content (`md:`, `lg:`, `sm:`). The real viewport is a smaller scaled box around the canvas, so they lie about available width. Use a single absolute size.
-2. **Tiny text disappears.** `text-sm` (14px) at 0.78× scale becomes ~11px. See [`typography.md`](./typography.md) for the hard minimum.
-3. **Width math is fixed.** Every slide has `1920 - 2×80 = 1760px` of content area inside the standard padding.
-
-The deck shell (root component) is the only place that uses responsive layout. The slides themselves are always layout-fixed.
-
-### Canvas root (paste once at deck root, replaces the old responsive container)
-
-```tsx
-const BASE_W = 1920;
-const BASE_H = 1080;
-
-// Inside the deck component:
-const stageBoxRef = useRef<HTMLDivElement>(null);
-const [landscapeMode, setLandscapeMode] = useState(false);
-const [stageScale, setStageScale] = useState(1);
-const [stageW, setStageW] = useState(BASE_W);
-const [stageH, setStageH] = useState(BASE_H);
-const [zoom, setZoom] = useState(1); // presenter canvas zoom, multiplied on top of auto-fit
-
-const zoomIn = useCallback(() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2))), []);
-const zoomOut = useCallback(() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2))), []);
-const resetZoom = useCallback(() => setZoom(1), []);
-
-useEffect(() => {
-  const update = () => {
-    const box = stageBoxRef.current?.getBoundingClientRect();
-    if (!box) return;
-    const wantedW = landscapeMode ? BASE_H : BASE_W;
-    const wantedH = landscapeMode ? BASE_W : BASE_H;
-    const scale = Math.min(box.width / wantedW, box.height / wantedH) * zoom;
-    setStageScale(scale);
-    setStageW(wantedW * scale);
-    setStageH(wantedH * scale);
-  };
-  update();
-  const ro = new ResizeObserver(update);
-  if (stageBoxRef.current) ro.observe(stageBoxRef.current);
-  window.addEventListener("resize", update);
-  window.addEventListener("orientationchange", update);
-  return () => {
-    ro.disconnect();
-    window.removeEventListener("resize", update);
-    window.removeEventListener("orientationchange", update);
-  };
-}, [landscapeMode, zoom]);
-
-// Markup:
-<div className="fixed inset-0 bg-white overflow-hidden">
-  {/* Stage = viewport ABOVE the controls strip. `bottom-24` reserves a 96px
-      zone for the floating controls pill so the canvas never sits behind it. */}
-  <div ref={stageBoxRef} className="absolute top-0 left-0 right-0 bottom-24 overflow-auto">
-    <div className="min-w-full min-h-full flex items-start justify-center">
-      {/* Frame — pure clipper, NO chrome. Slide content provides its own bg per-slide. */}
-      <div className="relative overflow-hidden shrink-0" style={{ width: stageW, height: stageH }}>
-        <div
-          data-landscape={landscapeMode ? "true" : "false"}
-          className="absolute top-0 left-0"
-          style={{
-            width: BASE_W,
-            height: BASE_H,
-            transformOrigin: "top left",
-            transform: landscapeMode
-              ? `translate(${stageW}px, 0) rotate(90deg) scale(${stageScale})`
-              : `scale(${stageScale})`,
-          }}
-        >
-          <div
-            ref={containerRef}
-            style={{ width: BASE_W, height: BASE_H }}
-            className="overflow-x-auto overflow-y-hidden snap-x snap-mandatory scroll-smooth flex [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {/* slides */}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {/* Controls — floating pill overlay at bottom, always upright (see "Controls pill") */}
-  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 ...">…</div>
-</div>
-```
-
-> **Identical to v1.** Full-bleed canvas, 96px reserved controls strip, top-aligned stage, presenter zoom multiplier on top of auto-fit. Do not reintroduce frame chrome (shadow/gray bg) — it double-shrinks the canvas and makes fonts feel small. **No responsive prefixes inside slides.**
-
-### Scrolling math
-
-Each slide is `BASE_W` wide. Snap-scroll uses canvas coordinates:
-
-```tsx
-const scrollToSlide = useCallback((index: number) => {
-  const el = containerRef.current;
-  if (!el) return;
-  const clamped = Math.max(0, Math.min(totalSlides - 1, index));
-  el.scrollTo({ left: clamped * BASE_W, behavior: "smooth" });
-}, [totalSlides]);
-
-useEffect(() => {
-  const el = containerRef.current;
-  if (!el) return;
-  let frame = 0;
-  const onScroll = () => {
-    cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(() => setActive(Math.round(el.scrollLeft / BASE_W)));
-  };
-  el.addEventListener("scroll", onScroll, { passive: true });
-  return () => { el.removeEventListener("scroll", onScroll); cancelAnimationFrame(frame); };
-}, []);
-```
-
-### Controls pill (lives in the reserved bottom strip)
-
-A single compact pill at viewport `bottom-4`, centered: prev arrow · counter · dot row (sm+ only) · next arrow · divider · zoom group (− / % / +, sm+ only) · divider · landscape toggle. The pill lives **outside** the rotated canvas transform so labels stay upright. **Identical to v1** — copy the full pill markup from [`slide-templates-v1.md`](./slide-templates-v1.md) → "Controls pill" (prev/counter/dots/next/zoom/landscape). `w-max whitespace-nowrap max-w-[calc(100vw-1rem)]` are mandatory; the zoom group and dot row are `hidden sm:flex`.
-
-```tsx
-<div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-max max-w-[calc(100vw-1rem)] flex items-center gap-1 sm:gap-2 bg-white/95 backdrop-blur border border-gray-200 rounded-full px-1.5 sm:px-2 py-1.5 sm:py-2 shadow-lg whitespace-nowrap">
-  {/* prev · counter · dots(hidden sm:flex) · next · | · zoom(hidden sm:flex) · | · landscape */}
-  <span className={`text-xs font-mono ${theme.muted} tabular-nums shrink-0 px-1`}>
-    {String(active + 1).padStart(2, "0")} / {String(totalSlides).padStart(2, "0")}
-  </span>
-  {/* active dot uses ${theme.accentBg}; see v1 for the full button set + zoom group */}
-</div>
-```
-
-### Section progress markers on the dot row (optional add-on)
-
-For a long deck split into named sections (Day 1 / Day 2, Part 1 / Part 2), add glanceable markers to the dot row — it's deck **chrome** (no slide-content change, so **no PDF regen** needed). Two composable touches inside the dot `.map(...)`: (1) tint a later section's inactive dots with the accent at low opacity; (2) insert a labelled tick before a section boundary. **Identical to v1** — copy the dot-loop snippet from [`slide-templates-v1.md`](./slide-templates-v1.md) → "Section progress markers". The `text-[9px]` label is allowed there (chrome, not content).
+Decks render at a **fixed 1920×1080 canvas** that `DeckShell` scales (and optionally rotates 90°) to the viewport. Stage, zoom, scroll math, deep links, keyboard nav, controls pill, section markers and the `.deck-digit-rotate` CSS all live in `madebytle/src/app/presentation/_shared/deck-shell.tsx` — **import it, never paste chrome into a deck**. Props, locked numbers and the three canvas rules (no responsive prefixes, no tiny text, 1760px width math) are in [`canvas-shell.md`](./canvas-shell.md).
 
 ---
 
@@ -327,22 +196,6 @@ function SlideNumber({ current, total }: { current: number; total: number }) {
 ```
 
 > On the dark `cover` variant, the default `theme.muted` (slate-400) reads faintly on the gradient — that's usually fine (the counter is chrome). If you need it crisper, wrap it locally in `text-white/70`.
-
-### Landscape digit rotation (add to `globals.css`)
-
-Identical to v1 — the slide-number digits counter-rotate in rotated landscape mode:
-
-```css
-[data-landscape="true"] .deck-digit-rotate {
-  display: inline-block;
-  transform: rotate(-90deg);
-  transition: transform 0.2s ease;
-}
-```
-
-### Keyboard nav (paste once in the deck)
-
-Identical to v1 — ←/→/Space/PageUp/Down for slides, Home/End for ends, `+`/`-`/`0` and clicker Tab/Enter for presenter zoom (with `preventDefault` on Tab/Enter). Copy the `onKey` handler from [`slide-templates-v1.md`](./slide-templates-v1.md) → "Keyboard nav". If the deck has a TOC overlay, guard `if (tocOpen) return;`.
 
 ### `<CalloutBar>` — icon + text in a soft tinted box
 

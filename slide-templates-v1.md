@@ -1,6 +1,6 @@
 # Slide Templates — v1 (MakeByTle style)
 
-> **This is v1** — the clean, single-background MakeByTle gallery (amber / any of the four classic presets). For the **Kevents-branded** gallery with the 3-tier background system (cover / content / divider), signature motif, glass cards, and workshop/activity + section-divider archetypes, see [`slide-templates-v2.md`](./slide-templates-v2.md). Pick the version in SKILL.md **Step 3a**.
+> **This is v1** — the clean, single-background MakeByTle gallery (amber / any of the four classic presets). For the **Kevents-branded** gallery with the 3-tier background system (cover / content / divider), signature motif, glass cards, and workshop/activity + section-divider archetypes, see [`slide-templates-v2.md`](./slide-templates-v2.md); for the photo-led gallery see [`slide-templates-v3.md`](./slide-templates-v3.md). Pick the version in SKILL.md **Step 2**.
 
 Source of truth for every slide pattern. Read this when building a deck. **Do not modify when building** — only Tle upgrades this file, and upgrades only affect future decks.
 
@@ -15,276 +15,9 @@ All examples assume the `theme` token object from [`themes.md`](./themes.md) is 
 
 ---
 
-## Canvas mode (how decks actually render)
+## Canvas mode
 
-Decks render at a **fixed 1920×1080 canvas** that is CSS-scaled (and optionally rotated 90° for portrait phones) to fit the viewer's actual viewport. The `SlideShell` primitive takes care of this — slide content always lays out as if the screen is exactly 1920×1080.
-
-Three rules that follow from this:
-
-1. **No responsive prefixes** in slide content (`md:`, `lg:`, `sm:`). They lie about the available width because the *real* viewport is a smaller scaled box around the canvas. Always use a single absolute size.
-2. **Tiny text disappears.** A `text-sm` (14px) at 0.78× viewport scale becomes ~11px on a laptop preview. Read [`typography.md`](./typography.md) for the hard minimum (`text-base` / 16px for prose).
-3. **Width math is fixed.** Every slide has `1920 - 2×80 = 1760px` of content area inside the standard padding. Plan grids and max-widths against that.
-
-The deck shell (the `<Bni5MinDeck>`-style root component) is the only place that uses responsive layout — it positions the scaled canvas inside the actual viewport, draws the controls bar, and handles rotation. The slides themselves are always layout-fixed.
-
-### Canvas root (paste once at deck root, replaces the old responsive container)
-
-```tsx
-const BASE_W = 1920;
-const BASE_H = 1080;
-
-// Inside the deck component:
-const stageBoxRef = useRef<HTMLDivElement>(null);
-const [landscapeMode, setLandscapeMode] = useState(false);
-const [stageScale, setStageScale] = useState(1);
-const [stageW, setStageW] = useState(BASE_W);
-const [stageH, setStageH] = useState(BASE_H);
-const [zoom, setZoom] = useState(1); // presenter canvas zoom, multiplied on top of auto-fit
-
-const zoomIn = useCallback(() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2))), []);
-const zoomOut = useCallback(() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2))), []);
-const resetZoom = useCallback(() => setZoom(1), []);
-
-useEffect(() => {
-  const update = () => {
-    const box = stageBoxRef.current?.getBoundingClientRect();
-    if (!box) return;
-    const wantedW = landscapeMode ? BASE_H : BASE_W;
-    const wantedH = landscapeMode ? BASE_W : BASE_H;
-    // auto-fit to the visible stage, then apply the presenter's zoom on top
-    const scale = Math.min(box.width / wantedW, box.height / wantedH) * zoom;
-    setStageScale(scale);
-    setStageW(wantedW * scale);
-    setStageH(wantedH * scale);
-  };
-  update();
-  const ro = new ResizeObserver(update);
-  if (stageBoxRef.current) ro.observe(stageBoxRef.current);
-  window.addEventListener("resize", update);
-  window.addEventListener("orientationchange", update);
-  return () => {
-    ro.disconnect();
-    window.removeEventListener("resize", update);
-    window.removeEventListener("orientationchange", update);
-  };
-}, [landscapeMode, zoom]); // zoom in deps so the stage re-fits when it changes
-
-// Markup:
-<div className="fixed inset-0 bg-white overflow-hidden">
-  {/* Stage = viewport ABOVE the controls strip.
-      `bottom-24` reserves a 96px tall zone at the viewport bottom for the
-      floating controls pill. The canvas (in any orientation, including the
-      rotated landscape mode) never extends behind the pill, so the pill
-      never covers slide content.
-      Top-aligned (items-start) so when the stage is taller than 16:9
-      (mobile portrait, windowed desktop) the empty room sits at the bottom
-      of the stage. */}
-  {/* Stage scroll area: `overflow-auto` so a zoomed-in canvas can be panned. */}
-  <div ref={stageBoxRef} className="absolute top-0 left-0 right-0 bottom-24 overflow-auto">
-    {/* Centering wrapper: `min-w/h-full` keeps the frame centered when it fits
-        (zoom ≤ fit), and lets it overflow + scroll (pan) when the presenter
-        zooms beyond the viewport. Keeps `items-start` so at zoom=1 the slide
-        stays top-aligned exactly like before. */}
-    <div className="min-w-full min-h-full flex items-start justify-center">
-      {/* Frame — pure clipper, NO chrome (no shadow/ring/rounded/border).
-          Slide content provides its own bg per-slide. */}
-      <div
-        className="relative overflow-hidden shrink-0"
-        style={{ width: stageW, height: stageH }}
-      >
-        <div
-          // `data-landscape` is read by descendants (e.g. SlideNumber digits)
-          // that want to counter-rotate so they stay upright in rotated mode.
-          data-landscape={landscapeMode ? "true" : "false"}
-          className="absolute top-0 left-0"
-          style={{
-            width: BASE_W,
-            height: BASE_H,
-            transformOrigin: "top left",
-            transform: landscapeMode
-              ? `translate(${stageW}px, 0) rotate(90deg) scale(${stageScale})`
-              : `scale(${stageScale})`,
-          }}
-        >
-          <div
-            ref={containerRef}
-            style={{ width: BASE_W, height: BASE_H }}
-            className="overflow-x-auto overflow-y-hidden snap-x snap-mandatory scroll-smooth flex [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {/* slides */}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {/* Controls — floating pill overlay at bottom, always upright */}
-  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 ...">
-    {/* nav arrows + dots + landscape toggle (see "Controls overlay" below) */}
-  </div>
-</div>
-```
-
-> **Full-bleed canvas with reserved controls strip** (current standard):
-> - Stage area is the viewport MINUS a 96px bottom strip (`absolute top-0 left-0 right-0 bottom-24`). The canvas is scaled-to-fit *inside the stage*, so it never extends behind the controls pill — in any orientation, including the rotated landscape mode.
-> - Controls live as a **floating pill** at viewport `bottom-4` inside the reserved strip. Never rotated, never inside the canvas transform.
-> - Slide is **top-aligned** in the stage (`items-start`). Behavior by viewport aspect:
->   - viewport ≈ 16:9 (desktop full screen) → slide nearly fills the stage, gutter at top/bottom is small
->   - viewport > 16:9 tall (mobile portrait, windowed desktop) → slide sits at the top of the stage, empty white space below, then the controls strip
->   - viewport > 16:9 wide (ultrawide) → slide fits to height with left/right gutters
-> - `SlideShell` keeps `pt-24 pb-40` for internal breathing room. Now that canvas can't reach the pill, the pb-40 is a comfort margin, not a safety reservation.
-> - **Why a reserved strip** instead of pure overlay: in the rotated landscape mode, the canvas is taller-than-wide (rotated 90°). With a pure overlay the pill always covered the bottom of the rotated canvas; reserving a strip cleanly separates them.
-> - The earlier "frame with shadow + gray bg + bottom controls bar" layout made fonts feel small because the canvas was rendered at ~75% of the viewport, then 1920px got scaled inside that smaller box (double shrink). Don't reintroduce frame chrome.
-> - **Presenter zoom** (`zoom` state): a multiplier applied *on top of* the auto-fit so the presenter can enlarge the dashed-frame canvas when it reads too small on a projector/small screen — or shrink it. At `zoom=1` everything behaves exactly as before. When `zoom > 1` the canvas overflows the stage and the `overflow-auto` stage area lets the presenter scroll/pan to the part they want; the centering wrapper keeps it centered when it still fits. Controlled from the pill (− / % / +) and keys (`+` / `-` / `0`-to-reset). The slide-rail nav (`containerRef.scrollTo` in canvas coords) is unaffected by zoom.
-
-> **NO responsive prefixes inside slides.** The canvas root is non-responsive too now (only `bg-white`, `absolute inset-0`) — the only "responsive" piece is `hidden sm:flex` on the dot row inside the controls pill, where dots collapse on narrow phones.
-
-### Scrolling math
-
-Each slide is `BASE_W` wide. Snap-scroll uses canvas coordinates:
-
-```tsx
-const scrollToSlide = useCallback((index: number) => {
-  const el = containerRef.current;
-  if (!el) return;
-  const clamped = Math.max(0, Math.min(totalSlides - 1, index));
-  el.scrollTo({ left: clamped * BASE_W, behavior: "smooth" });
-}, [totalSlides]);
-
-useEffect(() => {
-  const el = containerRef.current;
-  if (!el) return;
-  let frame = 0;
-  const onScroll = () => {
-    cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(() => {
-      setActive(Math.round(el.scrollLeft / BASE_W));
-    });
-  };
-  el.addEventListener("scroll", onScroll, { passive: true });
-  return () => { el.removeEventListener("scroll", onScroll); cancelAnimationFrame(frame); };
-}, []);
-```
-
-### Controls pill (lives in the reserved bottom strip)
-
-A single compact pill at viewport `bottom-4`, centered. Combines: prev arrow · counter · dot row (sm+ only) · next arrow · divider · zoom group (− / % / +, sm+ only) · divider · landscape toggle (icon-only). The pill lives **outside** the rotated canvas transform, so its labels stay upright regardless of orientation.
-
-The pill sits inside the 96px stage-bottom reservation set by the stage area (`bottom-24`), so it never overlaps slide content in any orientation.
-
-**Responsive sizing**: smaller buttons + tighter padding on mobile (where every pixel of the cramped viewport matters), normal sizing on `sm+`:
-
-```tsx
-<div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-max max-w-[calc(100vw-1rem)] flex items-center gap-1 sm:gap-2 bg-white/95 backdrop-blur border border-gray-200 rounded-full px-1.5 sm:px-2 py-1.5 sm:py-2 shadow-lg whitespace-nowrap">
-  <button type="button" onClick={() => scrollToSlide(active - 1)} disabled={active === 0}
-    aria-label="Previous slide"
-    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center shrink-0">
-    <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" />
-  </button>
-
-  <span className={`text-xs font-mono ${theme.muted} tabular-nums shrink-0 px-1`}>
-    {String(active + 1).padStart(2, "0")} / {String(totalSlides).padStart(2, "0")}
-  </span>
-
-  {/* Dot row hidden on mobile to keep the pill compact */}
-  <div className="hidden sm:flex items-center gap-1 px-1">
-    {Array.from({ length: totalSlides }).map((_, i) => (
-      <button
-        key={i}
-        type="button"
-        onClick={() => scrollToSlide(i)}
-        aria-label={`Go to slide ${i + 1}`}
-        aria-current={active === i ? "true" : undefined}
-        className={`h-1.5 rounded-full transition-all ${
-          active === i ? `w-5 ${theme.accentBg}` : "w-1.5 bg-gray-300 hover:bg-gray-400"
-        }`}
-      />
-    ))}
-  </div>
-
-  <button type="button" onClick={() => scrollToSlide(active + 1)} disabled={active === totalSlides - 1}
-    aria-label="Next slide"
-    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center shrink-0">
-    <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
-  </button>
-
-  <span className="w-px h-5 sm:h-6 bg-gray-200 mx-0.5 sm:mx-1" aria-hidden="true" />
-
-  {/* Zoom group — presenter resizes the dashed-frame canvas (hidden on narrow phones).
-      `zoomIn`/`zoomOut`/`resetZoom` from the canvas-root block above. */}
-  <div className="hidden sm:flex items-center gap-0.5">
-    <button type="button" onClick={zoomOut} disabled={zoom <= 0.5}
-      aria-label="ย่อขนาด Canvas" title="ย่อ (กด −)"
-      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center shrink-0">
-      <MagnifyingGlassMinusIcon className="w-4 h-4" aria-hidden="true" />
-    </button>
-    <button type="button" onClick={resetZoom}
-      aria-label="รีเซ็ตขนาด Canvas" title="รีเซ็ตพอดีจอ (กด 0)"
-      className={`text-xs font-mono ${theme.muted} tabular-nums shrink-0 w-12 text-center hover:${theme.accent} transition-colors`}>
-      {Math.round(zoom * 100)}%
-    </button>
-    <button type="button" onClick={zoomIn} disabled={zoom >= 2}
-      aria-label="ขยายขนาด Canvas" title="ขยาย (กด +)"
-      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center shrink-0">
-      <MagnifyingGlassPlusIcon className="w-4 h-4" aria-hidden="true" />
-    </button>
-  </div>
-
-  <span className="hidden sm:block w-px h-5 sm:h-6 bg-gray-200 mx-0.5 sm:mx-1" aria-hidden="true" />
-
-  <button type="button" onClick={() => setLandscapeMode((v) => !v)}
-    aria-pressed={landscapeMode}
-    aria-label={landscapeMode ? "กลับแนวตั้ง" : "หมุนเป็นแนวนอน"}
-    title={landscapeMode ? "กลับแนวตั้ง" : "หมุนเป็นแนวนอน"}
-    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-      landscapeMode ? `${theme.accentBg} text-white` : `${theme.subtle} hover:bg-gray-100`
-    }`}>
-    <ArrowsPointingOutIcon className={`w-4 h-4 transition-transform ${landscapeMode ? "rotate-45" : ""}`} aria-hidden="true" />
-  </button>
-</div>
-```
-
-> **Zoom group is `hidden sm:flex`** — it's a presentation aid for big screens/projectors, so it collapses on narrow phones to keep the pill within `max-w-[calc(100vw-1rem)]` (same rationale as the dot row). Needs `MagnifyingGlassMinusIcon` + `MagnifyingGlassPlusIcon` from `@heroicons/react/24/outline`.
-
-Why one pill: every pixel of viewport height matters because the canvas scales-to-fit. A single ~52px-tall pill leaves more room for slide content than two stacked rows (~120px tall). On mobile portrait the pill is even shorter (~44px) thanks to the responsive padding shrink. The landscape toggle is icon-only with `aria-label` and `title` for the verbose Thai label on hover.
-
-> **`w-max whitespace-nowrap` is mandatory on the pill** — without them, the pill's bg-white box can render narrower than its content on certain viewports, leaving the rightmost button (landscape toggle) visually floating outside the pill. `max-w-[calc(100vw-1rem)]` caps the pill so it never bleeds past the viewport edge on phones; if your pill content is wider than that cap, hide non-essential elements at narrow breakpoints (e.g. wrap the dot row in `hidden sm:flex`) — never let the pill grow wider than the viewport.
-
-### Section progress markers on the dot row (optional add-on)
-
-For a long deck split into named sections (Day 1 / Day 2, Part 1 / Part 2, Week 6 / Week 8…), the presenter often wants a *glanceable* sense of "how far in am I / how close to the end" without reading the counter. Add markers to the existing dot row — it's deck **chrome** (no slide-content change, so editing it needs **no PDF regen**).
-
-Two cheap, composable touches inside the `{Array.from({length: totalSlides}).map(...)}` dot loop:
-1. **Tint a section's dots** — give the later section's inactive dots the accent at low opacity instead of gray, so the final block reads as a distinct cluster.
-2. **Insert a labelled tick before a section boundary** — a thin vertical divider + a tiny label (e.g. `W8`, `วันที่ 2`) right before the first dot of that section.
-
-```tsx
-{Array.from({ length: totalSlides }).map((_, i) => {
-  const isLater = i >= SECTION2_INDEX;            // 0-based index of section-2's first slide
-  const dot = (
-    <button key={i} type="button" onClick={() => scrollToSlide(i)}
-      aria-label={`Go to slide ${i + 1}`} aria-current={active === i ? "true" : undefined}
-      className={`h-1.5 rounded-full transition-all ${
-        active === i ? `w-5 ${theme.accentBg}`
-        : isLater ? "w-1.5 bg-[--accent]/35 hover:bg-[--accent]/60"  // tint section 2
-        : "w-1.5 bg-slate-300 hover:bg-slate-400"
-      }`}
-    />
-  );
-  if (i === SECTION2_INDEX) {                       // labelled tick before the boundary
-    return (
-      <span key="sec2-marker" className="flex items-center gap-1" title="Section 2 · home stretch">
-        <span className="w-px h-3.5 bg-[--accent]/60" aria-hidden="true" />
-        <span className="text-[9px] font-bold tracking-wide text-[--accent] mr-0.5">W8</span>
-        {dot}
-      </span>
-    );
-  }
-  return dot;
-})}
-```
-
-> The `text-[9px]` label is allowed here — the dot row is chrome (like the counter), not slide content, so it's exempt from the 5-size typography scale. Use theme tokens for the accent; keep the tick subtle (a notch, not a wall).
+Decks render at a **fixed 1920×1080 canvas** that `DeckShell` scales (and optionally rotates 90°) to the viewport. Stage, zoom, scroll math, deep links, keyboard nav, controls pill, section markers and the `.deck-digit-rotate` CSS all live in `madebytle/src/app/presentation/_shared/deck-shell.tsx` — **import it, never paste chrome into a deck**. Props, locked numbers and the three canvas rules (no responsive prefixes, no tiny text, 1760px width math) are in [`canvas-shell.md`](./canvas-shell.md).
 
 ---
 
@@ -292,11 +25,10 @@ Two cheap, composable touches inside the `{Array.from({length: totalSlides}).map
 
 ### `<SlideShell>` — fixed-canvas slide wrapper with snap
 
-Every slide is a `1920×1080` box. `SlideShell` enforces those dimensions; the controls bar is **outside** the canvas (rendered by the deck root), so the slide does not need to reserve bottom space for it.
+Every slide is a `1920×1080` box. `SlideShell` enforces those dimensions; the controls pill is **outside** the canvas (rendered by `DeckShell`).
 
 ```tsx
-const BASE_W = 1920;
-const BASE_H = 1080;
+import DeckShell, { BASE_W, BASE_H } from "../_shared/deck-shell";
 
 function SlideShell({
   children, number, total, label, bgImage, bgAlt, align = "top",
@@ -374,11 +106,9 @@ function Kicker({
 
 ```tsx
 function SlideNumber({ current, total }: { current: number; total: number }) {
-  // `.deck-digit-rotate` counter-rotates -90° when an ancestor has
-  // `data-landscape="true"` (rule lives in globals.css; see "Landscape digit
-  // rotation" below). Digits stay upright in rotated mode; the slash is
-  // intentionally NOT counter-rotated so the separator visually aligns with
-  // the rest of the rotated canvas.
+  // `.deck-digit-rotate` counter-rotates -90° when the DeckShell canvas has
+  // `data-landscape="true"` (rule already in globals.css). Digits stay upright
+  // in rotated mode; the slash is intentionally NOT counter-rotated.
   return (
     <div className={`absolute top-6 right-8 text-xs font-mono ${theme.muted} tabular-nums flex items-center gap-1`}>
       <span className="deck-digit-rotate">{String(current).padStart(2, "0")}</span>
@@ -388,50 +118,6 @@ function SlideNumber({ current, total }: { current: number; total: number }) {
   );
 }
 ```
-
-### Landscape digit rotation (add to `globals.css`)
-
-The slide-number digits need to read upright in rotated landscape mode (where the canvas is `rotate(90deg)`). Tailwind's arbitrary variants don't reliably emit a CSS rule for ancestor-based attribute selectors with quoted values, so define the rule explicitly in `globals.css`:
-
-```css
-/* Presentation deck — counter-rotate digits inside the slide-number badge
-   so they read upright when the canvas is in rotated landscape mode.
-   The slash is intentionally NOT counter-rotated. */
-[data-landscape="true"] .deck-digit-rotate {
-  display: inline-block;
-  transform: rotate(-90deg);
-  transition: transform 0.2s ease;
-}
-```
-
-The deck root sets `data-landscape={landscapeMode ? "true" : "false"}` on the canvas wrapper (the div with the rotate transform), so the rule cascades into every slide's `SlideNumber`.
-
-### Keyboard nav (paste once in the deck)
-
-```tsx
-useEffect(() => {
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); scrollToSlide(active + 1); }
-    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); scrollToSlide(active - 1); }
-    else if (e.key === "Home") scrollToSlide(0);
-    else if (e.key === "End") scrollToSlide(totalSlides - 1);
-    // Presenter zoom. Tab/Enter are also wired because presentation clickers
-    // commonly send them (alongside ←/→); preventDefault stops Tab from moving
-    // focus and Enter from activating a focused control.
-    else if (e.key === "+" || e.key === "=" || e.key === "Tab") { e.preventDefault(); zoomIn(); }
-    else if (e.key === "-" || e.key === "_" || e.key === "Enter") { e.preventDefault(); zoomOut(); }
-    else if (e.key === "0") resetZoom();
-  };
-  window.addEventListener("keydown", onKey);
-  return () => window.removeEventListener("keydown", onKey);
-}, [active, scrollToSlide, totalSlides, zoomIn, zoomOut, resetZoom]);
-```
-
-> **Presentation-clicker keys.** Many clickers send `←`/`→` for slides plus `Tab`/`Enter` as their two extra buttons. Mapping `Tab → zoom in` and `Enter → zoom out` lets the presenter resize the canvas from the clicker. **`preventDefault` is required** on Tab (else focus jumps between buttons) and Enter (else it re-triggers a focused control). Update the two zoom buttons' `title` to advertise it (e.g. `"ขยาย (กด + หรือ Tab)"`, `"ย่อ (กด − หรือ Enter)"`).
-
-> If the deck also has a TOC overlay (see [`toc.md`](./toc.md)), the keyboard handler additionally guards `if (tocOpen) return;` after the `Escape` check so zoom/nav keys (incl. Tab/Enter) don't fire while the menu is open — letting Tab/Enter navigate the menu normally.
-
----
 
 ## Layout principles (read before composing any slide)
 

@@ -21,6 +21,8 @@ const theme = {
 } as const;
 ```
 
+> **`shellPadding`** mirrors the padding `SlideShell` hardcodes (`px-20 pt-24 pb-40`; v3 `pt-28`) — canvas mode has no `md:` breakpoints, so never write `px-6 md:px-20` here.
+
 > **`frameOutline`** is non-optional — every theme MUST set it. It draws the dashed canvas border on every slide (visible in production, by Tle's preference, as a visual cue that "this is a 1920×1080 canvas"). Pick a stroke color that has gentle contrast against the theme's `bg`.
 
 Then in slides:
@@ -47,7 +49,7 @@ White, clean, amber accent. Matches `madebytle.com`.
   accentSoftHover: "hover:border-amber-300 hover:bg-amber-50",
   border: "border-gray-200",
   kicker: "text-amber-600",
-  shellPadding: "px-6 md:px-20 py-16",
+  shellPadding: "px-20 pt-24 pb-40",
   frameOutline: "outline-dashed outline-1 -outline-offset-1 outline-gray-300",
 }
 ```
@@ -71,7 +73,7 @@ Navy/black background, gold accent. Feels like a luxury BNI blazer.
   accentSoftHover: "hover:border-amber-400/60 hover:bg-amber-400/15",
   border: "border-neutral-800",
   kicker: "text-amber-400",
-  shellPadding: "px-6 md:px-20 py-16",
+  shellPadding: "px-20 pt-24 pb-40",
   frameOutline: "outline-dashed outline-1 -outline-offset-1 outline-neutral-700",
 }
 ```
@@ -95,7 +97,7 @@ Animated gradient background, white text — feels distinctly "AI / future". Use
   accentSoftHover: "hover:border-white/40 hover:bg-white/15",
   border: "border-white/15",
   kicker: "text-cyan-300",
-  shellPadding: "px-6 md:px-20 py-16",
+  shellPadding: "px-20 pt-24 pb-40",
   frameOutline: "outline-dashed outline-1 -outline-offset-1 outline-white/20",
 }
 ```
@@ -119,7 +121,7 @@ Cream background, charcoal text, single colored accent. Reads like a magazine sp
   accentSoftHover: "hover:border-rose-300 hover:bg-rose-50",
   border: "border-stone-200",
   kicker: "text-rose-600",
-  shellPadding: "px-6 md:px-20 py-16",
+  shellPadding: "px-20 pt-24 pb-40",
   frameOutline: "outline-dashed outline-1 -outline-offset-1 outline-stone-300",
 }
 ```
@@ -148,7 +150,7 @@ The signature preset for the **v2 gallery** ([`slide-templates-v2.md`](./slide-t
   border: "border-slate-200",
   card: "bg-white border-slate-200 hover:border-indigo-300",
   kicker: "text-indigo-600",
-  shellPadding: "px-6 md:px-20 py-16",
+  shellPadding: "px-20 pt-24 pb-40",
   frameOutline: "outline-dashed outline-1 -outline-offset-1 outline-slate-300",
 
   // --- v2 additive: per-slide background system ---
@@ -192,6 +194,16 @@ The signature preset for the **v2 gallery** ([`slide-templates-v2.md`](./slide-t
 ```
 
 When to use: **v2 decks** — Kevents event/community content, workshops with hands-on Activity slides, any deck that wants the indigo→purple→pink signature + section dividers. Pair with `variant="cover"` on the title/closing slides, `variant="divider"` on section breaks, `variant="content"` (default) elsewhere. See [`slide-templates-v2.md`](./slide-templates-v2.md).
+
+## Preset 6 — Custom
+
+If Tle picks "Custom", ask a follow-up `AskUserQuestion` with these:
+
+1. **Mode**: Light / Dark
+2. **Primary accent**: pick from a palette (Amber, Blue, Emerald, Rose, Violet, Custom hex)
+3. **Vibe**: Clean / Bold / Soft
+
+Then synthesize a token set following the same shape as the presets above. **Always include `frameOutline`** — pick a stroke that has gentle (not harsh) contrast against the chosen `bg`: light themes → `outline-gray-300`-ish; dark themes → `outline-white/15`-to-`outline-neutral-700`-ish.
 
 ## Preset 7 — Korat City Show (v1 · อวดเมือง palette)
 
@@ -262,16 +274,6 @@ Differences from every other preset:
 
 When to use: **v3 decks** — media / sponsorship / event proposals, venue and campaign decks, portfolio show-reels: anything sold through photographs. Needs real photos; see `slide-templates-v3.md` → "Photos". Don't pair it with v1/v2 templates, and don't use a light preset with v3 (the primitives assume white-on-dark).
 
-## Preset 6 — Custom
-
-If Tle picks "Custom", ask a follow-up `AskUserQuestion` with these:
-
-1. **Mode**: Light / Dark
-2. **Primary accent**: pick from a palette (Amber, Blue, Emerald, Rose, Violet, Custom hex)
-3. **Vibe**: Clean / Bold / Soft
-
-Then synthesize a token set following the same shape as the presets above. **Always include `frameOutline`** — pick a stroke that has gentle (not harsh) contrast against the chosen `bg`: light themes → `outline-gray-300`-ish; dark themes → `outline-white/15`-to-`outline-neutral-700`-ish.
-
 ## How to ask Tle (canonical AskUserQuestion form)
 
 ```ts
@@ -293,7 +295,7 @@ Then synthesize a token set following the same shape as the presets above. **Alw
 }
 ```
 
-> **Version coupling:** offer **Kevents** only when SKILL.md Step 3a chose the **v2** gallery (it needs the v2 `SlideShell`). When v1 is chosen, offer the four classic presets. When **v3** is chosen the theme is always **The Standard** — ask instead which accent colour each programme/section gets (coral / amber / magenta / lilac, or the client's palette). Don't mix a v1 theme with v2 (cover/divider silently fall back to plain content).
+> **Version coupling:** offer **Kevents** only when SKILL.md Step 2 chose the **v2** gallery (it needs the v2 `SlideShell`). When v1 is chosen, offer the four classic presets. When **v3** is chosen the theme is always **The Standard** — ask instead which accent colour each programme/section gets (coral / amber / magenta / lilac, or the client's palette). Don't mix a v1 theme with v2 (cover/divider silently fall back to plain content).
 
 If they pick "Other" / "Custom", follow up with the Mode + Accent + Vibe sub-question.
 
