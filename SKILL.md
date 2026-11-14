@@ -1,6 +1,6 @@
 ---
 name: kiki-presentation
-description: "Build and deploy a web slide deck to madebytle.com/presentation/<slug> from any project. Triggers: ทำ presentation, ทำสไลด์, พรีเซน, make slides, build a deck. Asks audience, template version, theme, features."
+description: "Build a web slide deck: deployed to madebytle.com/presentation/<slug> (v1-v3), or a private cinematic stage deck inside the project (v4 Cinematic Launch, like Yellobe / Happiness). Triggers: ทำ presentation, ทำสไลด์, พรีเซน, ทำเด็คเปิดตัว, make slides, build a deck. Asks audience, template version, theme, features."
 ---
 
 # kiki-presentation — Web Presentation Builder
@@ -15,7 +15,7 @@ The current project provides *content*; the deck **always** lives in the MakeByT
 |---|-------|--------|
 | 1 | Slug | suggest from current dir name; Tle confirms |
 | 2 | Audience | BNI / Pitch / Handover / Conference / Teaching / Custom — drives slide selection |
-| 3 | Template version | v1 / v2 / v3 ("The Standard") — drives valid themes |
+| 3 | Template version | v1 / v2 / v3 ("The Standard") / v4 ("Cinematic Launch", private HTML in the project) — drives valid themes and where the deck lives |
 | 4 | Theme | always ask, even when defaulting ([`themes.md`](./themes.md)) |
 | 5 | Optional features | ONE `multiSelect` question, ≤4 options ([`addons.md`](./addons.md)) |
 | 6 | Title + tagline | from `CLAUDE.md` / `README.md`; confirm |
@@ -53,7 +53,8 @@ URLs: `https://madebytle.com/presentation/<slug>` and `…/<slug>/<slide-slug>` 
   - **v1 — MakeByTle** [`slide-templates-v1.md`](./slide-templates-v1.md): clean single background; the proven default.
   - **v2 — Kevents** [`slide-templates-v2.md`](./slide-templates-v2.md): indigo→purple→pink gradient, glass, 3-tier backgrounds, signature motif, activity/divider archetypes. Kevents / community / event decks.
   - **v3 — The Standard · photo-led** [`slide-templates-v3.md`](./slide-templates-v3.md): full-bleed photo + scrim, white type, one accent per programme, real media (phones, thumbnails, cut-outs). Media / sponsorship / venue / portfolio decks. **Needs photographs** — ask where they are, read the v3 "Photos" section first. Not for teaching or text-heavy decks. Reference: `cinematic-demo`.
-- [ ] **Theme** — offer only presets valid for the version: v1 → MakeByTle · Premium Dark · Gradient AI · Editorial Minimal (or Custom; Korat City Show for Korat decks); v2 → Kevents only; v3 → The Standard only — ask instead which **accent** each programme gets (coral / amber / magenta / lilac / client palette). Never pair a v1 theme with v2 (cover/divider silently fall back to plain content).
+  - **v4 — Cinematic Launch · private stage deck** [`slide-templates-v4.md`](./slide-templates-v4.md): one generated photo series via `/kiki-gpt`, real app screens in phone/browser frames + magnified evidence crops, one highlighted message per slide, accent per speaker, speaker notes + PDF + `deck.md`. **Standalone HTML inside the client project — not madebytle.com.** Pick it for launches, client proposals, confidential or two-speaker stage talks. Reference: `138 Yellobe/docs/proposal/`, `30 Happiness MLM/mlm-thehappiness/.presentation-work/claude/`. **When v4 is chosen: skip "File layout", steps 4–7 below and follow the build order in `slide-templates-v4.md`** (copy `templates/v4-cinematic/`); themes = accents taken from the client logo; deliver = local `index.html` + PDF + `deck.md` + contact sheet, never deploy.
+- [ ] **Theme** — offer only presets valid for the version: v1 → MakeByTle · Premium Dark · Gradient AI · Editorial Minimal (or Custom; Korat City Show for Korat decks); v2 → Kevents only; v3 → The Standard only — ask instead which **accent** each programme gets (coral / amber / magenta / lilac / client palette); v4 → no preset, accents come from the client logo (one per speaker/section). Never pair a v1 theme with v2 (cover/divider silently fall back to plain content).
 - [ ] **Features** — one `multiSelect` question, pick the ≤4 relevant options: Teaching → สารบัญ · PDF · Mockup (pre-recommend) · Progress marker; BNI / Pitch / Conference → สารบัญ · PDF · Live messages (+1). Build exactly what is ticked. Canonical form + build notes in [`addons.md`](./addons.md).
 - [ ] **Content** the repo doesn't provide (title, sections, contact…).
 
@@ -143,6 +144,7 @@ curl -s -o /dev/null -w "%{http_code}" https://madebytle.com/presentation/<slug>
 | [`typography.md`](./typography.md) | before sizing any text — 5-size scale |
 | [`themes.md`](./themes.md) | Step 2 theme — presets per version |
 | [`slide-templates-v1.md`](./slide-templates-v1.md) · [`v2`](./slide-templates-v2.md) · [`v3`](./slide-templates-v3.md) | Step 4 — the chosen gallery (v3 also covers photo sourcing + `scripts/cutout.swift`) |
+| [`slide-templates-v4.md`](./slide-templates-v4.md) + [`templates/v4-cinematic/`](./templates/v4-cinematic/) | v4 — principles, patterns, Thai type rules, starter kit |
 | [`addons.md`](./addons.md) | Step 2 features / Step 6 — TOC, PDF, progress markers, live messages |
 | [`illustrated-decks.md`](./illustrated-decks.md) | Step 3 — picture-led client decks (`korat-points` pattern) |
 | [`bni-structure.md`](./bni-structure.md) | audience = BNI |

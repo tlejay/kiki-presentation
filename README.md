@@ -23,6 +23,8 @@ Triggers: "ทำ presentation" / "ทำสไลด์" / "พรีเซน"
 | `slide-templates-v1.md` | Gallery v1 — MakeByTle style (T01–T15) + layout principles |
 | `slide-templates-v2.md` | Gallery v2 — Kevents brand (K01–K24, SignatureMotif, 3-tier backgrounds) |
 | `slide-templates-v3.md` | Gallery v3 — The Standard (C01–C10, full-bleed photo + scrim, cut-outs) |
+| `slide-templates-v4.md` | Gallery v4 — Cinematic Launch: private standalone HTML stage deck (photo series, real screens, magnifiers, notes, PDF, deck.md) |
+| `templates/v4-cinematic/` | v4 starter kit — copy into the project |
 | `scripts/cutout.swift` | Lifts the main subject out of a photo into a transparent PNG (Apple Vision, macOS 14+) |
 | `themes.md` | Theme presets 1–8 + custom synthesis |
 | `typography.md` | 5-size type scale and font rules |
