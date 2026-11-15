@@ -153,6 +153,7 @@ curl -s -o /dev/null -w "%{http_code}" https://madebytle.com/presentation/<slug>
 ## Never
 
 - ❌ Deploy a slide-content change on a deck that has a PDF without regenerating the PDF.
+- ❌ Make a PDF with Chrome `--print-to-pdf` / `window.print()`. Shadows on rotated phones become **black boxes** in Preview / Drive / LINE. Always screenshot each slide and join the images (`addons.md` → PDF, v4 `build_pdf.py`). Check the result in macOS Quick Look, not Chrome.
 - ❌ Modify a gallery / template file while building a deck.
 - ❌ Use emoji anywhere (icons, headings, labels, card text, mockups) — Heroicons or plain text; typographic arrows `→ ← ↔` are fine.
 - ❌ Invent personal-branding content — mark guesses `// TODO: confirm with Tle`.

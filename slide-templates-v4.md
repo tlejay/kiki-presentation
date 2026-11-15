@@ -6,7 +6,7 @@ Reference decks (Tle approved both — "ทำออกมาดีมาก"):
 - `138 Yellobe/docs/proposal/presentation.html` — client proposal, yellow accent
 - `30 Happiness MLM/mlm-thehappiness/.presentation-work/claude/` — platform launch, two speakers, sky/orange accents (Nov 2569). Built after Codex shipped two rounds Tle rejected as "a user manual, not a launch".
 
-Starter kit: [`templates/v4-cinematic/`](./templates/v4-cinematic/) — copy the whole folder into the project (`deck.css`, `index.html` with one slide per pattern, `build_md.py`, fonts).
+Starter kit: [`templates/v4-cinematic/`](./templates/v4-cinematic/) — copy the whole folder into the project (`deck.css`, `index.html` with one slide per pattern, `build_md.py`, `build_pdf.py`, fonts).
 
 ## When to pick v4
 
@@ -59,7 +59,10 @@ Starter kit: [`templates/v4-cinematic/`](./templates/v4-cinematic/) — copy the
 ## Viewer & outputs
 
 - Keys: `←/→` · `F` fullscreen · `N` speaker notes · `G` overview grid · URL `#n` deep link · swipe on touch.
-- PDF backup: Chrome headless `--print-to-pdf` on `index.html?print` (1280×720 pages). Regenerate after every content change.
+- PDF backup: **`python3 build_pdf.py`**: screenshots every slide (`index.html?shot#n`, 2×) and joins them with `img2pdf` → `qa/deck.pdf` (~8 MB for 24 slides) + `qa/s-NN.png` thumbnails. Regenerate after every content change.
+  - **Never use Chrome `--print-to-pdf` / `window.print()`.** It exports box-shadows/filters on rotated phones as transparency groups, which macOS Preview, Google Drive and LINE draw as **solid black boxes around the phones** (Tle hit this many times; Happiness deck, Nov 2569). It also made a 54 MB file. Screenshots are flat pixels, so every viewer shows what Chrome shows.
+  - `?shot` hides the HUD and turns off the slide fade. Without it, the capture catches a half-dark slide.
+  - Verify with macOS Quick Look, not Chrome: `qlmanage -t -s 1600 -o /tmp qa/deck.pdf`. Chrome's own PDF viewer hides the bug.
 - `deck.md` = `python3 build_md.py` (head + per-slide brief/notes from the HTML + Q&A tail). Never hand-edit the per-slide part. Add `data-who="…"` per slide for the speaker column.
 - Speaker notes live in `<aside class="note">` per slide. Timing goes in `data-time`. Two speakers × 15 min ≈ 12 slides each.
 
@@ -68,5 +71,5 @@ Starter kit: [`templates/v4-cinematic/`](./templates/v4-cinematic/) — copy the
 1. Outline: story → one message per slide → which real screen or fact proves it. Get Tle's OK.
 2. Cover photo through `/kiki-gpt` → check → queue the rest of the series in one message (≈1.5 min/photo).
 3. Build the slides from the starter while photos render.
-4. Render PDF → contact sheet → zoom check each slide (faces covered by phones? text over faces? strips colliding?) → fix → repeat.
+4. `build_pdf.py` → contact sheet → zoom check each slide (faces covered by phones? text over faces? strips colliding?) → fix → repeat.
 5. `deck.md`, then report to Tle with the contact sheet image.

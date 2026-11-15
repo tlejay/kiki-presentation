@@ -116,6 +116,7 @@
   const slides = [...document.querySelectorAll('.slide')];
   if (p.has('print')) { document.body.className = ''; return; }
   const notes = document.getElementById('notes'), hud = document.getElementById('hud');
+  if (p.has('shot')) { hud.style.display = 'none'; document.body.classList.add('shot'); } // build_pdf.py screenshots
   let i = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1)) || 1) - 1));
   function fit() {
     const s = Math.min(innerWidth / 1280, innerHeight / 720);

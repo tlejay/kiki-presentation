@@ -186,3 +186,6 @@ h1.m { font-size: 38px; }
    Latin-only kickers keep the wide tracking. */
 .kick.en { font-size: 13px; letter-spacing: .22em; text-transform: uppercase; font-weight: 700; }
 .lead { margin-top: 14px; }
+
+/* build_pdf.py: no fade, or screenshots catch a half-dark slide */
+body.shot .slide { transition: none !important; }
